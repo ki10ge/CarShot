@@ -82,7 +82,7 @@ def call_gpt(image_buf: io.BytesIO, prompt: str) -> bytes:
     """Sendet Bild an GPT-4o Image Edit, gibt Ergebnis-bytes zurück."""
     image_buf.seek(0)
     response = client.images.edit(
-        model="gpt-image-1",
+        model="dall-e-2",
         image=image_buf,
         prompt=prompt,
         n=1,
