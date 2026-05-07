@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INKD.AI — Tattoo Preview Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0806;
+    --paper: #f5f0e8;
+    --cream: #ede8dc;
+    --rust: #c84b2f;
+    --rust-light: #e05a3a;
+    --gold: #c9a84c;
+    --muted: #8a8070;
+    --border: rgba(10,8,6,0.12);
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    background: rgba(245, 240, 232, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .logo span { color: var(--rust); }
+
+  nav .tagline {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding-top: 72px;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 56px 80px 48px;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .hero-left::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 1px; height: 60%;
+    background: linear-gradient(to top, var(--rust), transparent);
+    transform: translateX(0.5px);
+  }
+
+  .issue-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--rust);
+    font-weight: 500;
+    margin-bottom: 32px;
+  }
+
+  .issue-tag::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--rust);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(72px, 8vw, 120px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    margin-bottom: 28px;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--rust);
+    display: block;
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--muted);
+    max-width: 380px;
+    margin-bottom: 48px;
+    font-weight: 300;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 40px;
+    padding-top: 40px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat-item strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 36px;
+    letter-spacing: 1px;
+    color: var(--ink);
+  }
+
+  .stat-item span {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* UPLOAD PANEL */
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 48px 80px 56px;
+    background: var(--cream);
+  }
+
+  .panel-header {
+    font-family: var(--font-display);
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .panel-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 1.5px dashed rgba(10,8,6,0.25);
+    border-radius: 2px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: rgba(255,255,255,0.4);
+    position: relative;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--rust);
+    background: rgba(200, 75, 47, 0.04);
+  }
+
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    opacity: 0.4;
+  }
+
+  .upload-zone h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+
+  .upload-zone p {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .preview-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 2px;
+    display: none;
+  }
+
+  .preview-img.show { display: block; }
+
+  /* TEXTAREA */
+  .field-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: block;
+    font-weight: 500;
+  }
+
+  textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.5);
+    border: 1.5px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 16px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--ink);
+    resize: none;
+    height: 90px;
+    transition: border-color 0.2s;
+    outline: none;
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  textarea:focus { border-color: var(--rust); }
+
+  textarea::placeholder { color: var(--muted); font-weight: 300; }
+
+  /* PRICING */
+  .pricing-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .plan-card {
+    border: 1.5px solid var(--border);
+    border-radius: 2px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.4);
+    position: relative;
+  }
+
+  .plan-card.active {
+    border-color: var(--rust);
+    background: rgba(200, 75, 47, 0.06);
+  }
+
+  .plan-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .plan-name {
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: 2px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .plan-price {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--rust);
+    display: block;
+  }
+
+  .plan-desc {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 4px;
+    display: block;
+  }
+
+  .plan-badge {
+    position: absolute;
+    top: -1px; right: -1px;
+    background: var(--rust);
+    color: white;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    font-weight: 500;
+  }
+
+  /* BUTTON */
+  .btn-generate {
+    width: 100%;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 18px 24px;
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border-radius: 2px;
+  }
+
+  .btn-generate:hover:not(:disabled) {
+    background: var(--rust);
+    transform: translateY(-1px);
+  }
+
+  .btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* LOADING */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(245, 240, 232, 0.95);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .loading-overlay.show { display: flex; }
+
+  .loading-ink {
+    width: 64px;
+    height: 64px;
+    position: relative;
+  }
+
+  .loading-ink svg {
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-family: var(--font-display);
+    font-size: 32px;
+    letter-spacing: 6px;
+    color: var(--ink);
+  }
+
+  .loading-sub {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .loading-dots span {
+    animation: blink 1.4s infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+  }
+
+  /* RESULTS */
+  .results-section {
+    display: none;
+    padding: 80px 48px;
+    background: var(--ink);
+    position: relative;
+  }
+
+  .results-section.show { display: block; }
+
+  .results-section::before {
+    content: 'YOUR TATTOO PREVIEWS';
+    display: block;
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 6px;
+    color: var(--muted);
+    margin-bottom: 40px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 20px;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .result-card {
+    background: #1a1714;
+    border-radius: 2px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+    animation: fadeUp 0.5s ease forwards;
+    opacity: 0;
+  }
+
+  .result-card:nth-child(1) { animation-delay: 0.05s; }
+  .result-card:nth-child(2) { animation-delay: 0.12s; }
+  .result-card:nth-child(3) { animation-delay: 0.19s; }
+  .result-card:nth-child(4) { animation-delay: 0.26s; }
+  .result-card:nth-child(5) { animation-delay: 0.33s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card:hover { transform: scale(1.02); }
+
+  .result-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+  }
+
+  .result-card-footer {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .result-num {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--muted);
+  }
+
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--rust);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 2px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+
+  .btn-download:hover { background: var(--rust-light); }
+
+  .results-actions {
+    max-width: 1200px;
+    margin: 40px auto 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .btn-new {
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    color: var(--paper);
+    padding: 14px 40px;
+    font-family: var(--font-display);
+    font-size: 16px;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .btn-new:hover {
+    border-color: var(--rust);
+    color: var(--rust);
+  }
+
+  /* HOW IT WORKS */
+  .section-how {
+    padding: 100px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-eyebrow {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 5vw, 72px);
+    line-height: 1;
+    letter-spacing: 2px;
+    margin-bottom: 60px;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+  }
+
+  .step {
+    padding-top: 24px;
+    border-top: 1.5px solid var(--border);
+  }
+
+  .step-num {
+    font-family: var(--font-display);
+    font-size: 48px;
+    color: rgba(10,8,6,0.08);
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .step h4 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .step p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  /* BEFORE/AFTER SLIDER */
+  .section-examples {
+    background: var(--cream);
+    padding: 80px 48px;
+    overflow: hidden;
+  }
+
+  .section-examples .section-eyebrow { margin-bottom: 16px; }
+  .section-examples .section-title { margin-bottom: 48px; }
+
+  .slider-wrapper {
+    position: relative;
+    overflow: hidden;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .slider-track {
+    display: flex;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .slide {
+    min-width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .slide-panel {
+    background: var(--paper);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .slide-panel img {
+    width: 100%;
+    aspect-ratio: 4/5;
+    object-fit: cover;
+    display: block;
+  }
+
+  .slide-label {
+    padding: 14px 18px;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .slide-label strong { color: var(--ink); font-weight: 500; }
+
+  .slider-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .slider-btn {
+    width: 40px; height: 40px;
+    border: 1.5px solid var(--border);
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .slider-btn:hover {
+    border-color: var(--rust);
+    background: var(--rust);
+    color: white;
+  }
+
+  .slider-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .dot.active { background: var(--rust); }
+
+  /* PRICING SECTION */
+  .section-pricing {
+    padding: 100px 48px;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .pricing-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 56px;
+  }
+
+  .price-card {
+    border: 1.5px solid var(--border);
+    border-radius: 2px;
+    padding: 40px 32px;
+    text-align: left;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+
+  .price-card:hover { border-color: var(--rust); }
+
+  .price-card.featured {
+    border-color: var(--rust);
+    background: rgba(200, 75, 47, 0.04);
+  }
+
+  .price-tag-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .price-amount {
+    font-family: var(--font-display);
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .price-amount sup {
+    font-size: 24px;
+    vertical-align: top;
+    margin-top: 12px;
+    display: inline-block;
+  }
+
+  .price-per {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 32px;
+  }
+
+  .price-features {
+    list-style: none;
+    margin-bottom: 32px;
+  }
+
+  .price-features li {
+    font-size: 13px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .price-features li::before {
+    content: '—';
+    color: var(--rust);
+    font-weight: 300;
+  }
+
+  .price-features li strong { color: var(--ink); font-weight: 500; }
+
+  .featured-badge {
+    position: absolute;
+    top: -1px; right: 24px;
+    background: var(--rust);
+    color: white;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    font-weight: 500;
+  }
+
+  /* FOOTER */
+  footer {
+    background: var(--ink);
+    color: rgba(245, 240, 232, 0.4);
+    padding: 40px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  footer .logo { color: var(--paper); font-size: 22px; }
+
+  /* ERROR */
+  .error-msg {
+    background: rgba(200, 75, 47, 0.1);
+    border: 1px solid rgba(200, 75, 47, 0.3);
+    color: var(--rust);
+    padding: 12px 16px;
+    font-size: 12px;
+    border-radius: 2px;
+    margin-top: 12px;
+    display: none;
+    letter-spacing: 0.5px;
+  }
+
+  .error-msg.show { display: block; }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    nav { padding: 16px 20px; }
+    nav .tagline { display: none; }
+
+    .hero {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+
+    .hero-left {
+      padding: 60px 24px 40px;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-right { padding: 40px 24px 60px; }
+
+    h1 { font-size: 64px; }
+
+    .stats-row { gap: 24px; }
+
+    .steps-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+
+    .slide { grid-template-columns: 1fr; }
+    .slide-panel:last-child { display: none; }
+
+    .pricing-cards { grid-template-columns: 1fr; }
+
+    .section-how, .section-examples, .section-pricing { padding: 60px 24px; }
+    .results-section { padding: 60px 24px; }
+
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="logo">INKD<span>.</span>AI</a>
+  <span class="tagline">AI Tattoo Preview</span>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <span class="issue-tag">Powered by GPT-4o + DALL-E 3</span>
+    <h1>SEE IT<br>BEFORE<br><em>YOU INK.</em></h1>
+    <p class="hero-sub">Upload a photo of your skin, describe your dream tattoo — our AI renders it directly on your body in seconds.</p>
+    <div class="stats-row">
+      <div class="stat-item">
+        <strong>4K+</strong>
+        <span>Previews created</span>
+      </div>
+      <div class="stat-item">
+        <strong>30s</strong>
+        <span>Average render</span>
+      </div>
+      <div class="stat-item">
+        <strong>€2.90</strong>
+        <span>Per preview</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="panel-header">Create Your Preview</div>
+
+    <!-- UPLOAD -->
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="photoInput" accept="image/*" capture="environment">
+      <svg class="upload-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="8" width="40" height="32" rx="2" stroke="#0a0806" stroke-width="1.5"/>
+        <circle cx="24" cy="22" r="7" stroke="#0a0806" stroke-width="1.5"/>
+        <path d="M16 8V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2" stroke="#0a0806" stroke-width="1.5"/>
+        <circle cx="38" cy="14" r="2" fill="#0a0806"/>
+      </svg>
+      <h3>UPLOAD PHOTO</h3>
+      <p>Arm, shoulder, back, leg — any body part</p>
+    </div>
+    <img id="previewImg" class="preview-img" alt="Preview" />
+
+    <!-- DESCRIPTION -->
+    <label class="field-label" for="descInput">Describe Your Tattoo</label>
+    <textarea id="descInput" placeholder="e.g. minimalist wolf, fine line style, inner forearm — blackwork with geometric elements..." maxlength="500"></textarea>
+
+    <!-- PRICING -->
+    <div class="pricing-toggle">
+      <label class="plan-card active" id="planSingle">
+        <input type="radio" name="plan" value="single" checked>
+        <span class="plan-name">SINGLE</span>
+        <span class="plan-price">€2.90</span>
+        <span class="plan-desc">1 variation</span>
+      </label>
+      <label class="plan-card" id="planBundle">
+        <input type="radio" name="plan" value="bundle">
+        <span class="plan-badge">BEST VALUE</span>
+        <span class="plan-name">BUNDLE</span>
+        <span class="plan-price">€9.90</span>
+        <span class="plan-desc">5 variations</span>
+      </label>
+    </div>
+
+    <button class="btn-generate" id="generateBtn" disabled>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      GENERATE PREVIEW
+    </button>
+
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+</section>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-ink">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="28" stroke="#c84b2f" stroke-width="1.5" stroke-dasharray="88 88" stroke-linecap="round"/>
+      <circle cx="32" cy="32" r="18" stroke="rgba(10,8,6,0.1)" stroke-width="1.5" stroke-dasharray="56 56" stroke-dashoffset="14" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="loading-text">INKING<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
+  <div class="loading-sub" id="loadingStep">Analyzing your body part</div>
+</div>
+
+<!-- RESULTS -->
+<section class="results-section" id="resultsSection">
+  <div class="results-grid" id="resultsGrid"></div>
+  <div class="results-actions">
+    <button class="btn-new" onclick="resetApp()">← GENERATE ANOTHER</button>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section-how">
+  <div class="section-eyebrow">The Process</div>
+  <div class="section-title">HOW IT<br>WORKS</div>
+  <div class="steps-grid">
+    <div class="step">
+      <div class="step-num">01</div>
+      <h4>UPLOAD</h4>
+      <p>Take or upload a clear photo of the body part you want tattooed.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <h4>DESCRIBE</h4>
+      <p>Describe your tattoo idea — style, motif, size, placement details.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <h4>AI RENDERS</h4>
+      <p>GPT-4o reads your skin tone and body area. DALL-E 3 places the tattoo realistically.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <h4>DOWNLOAD</h4>
+      <p>Get your preview instantly. No account, no email. Just your image.</p>
+    </div>
+  </div>
+</section>
+
+<!-- EXAMPLES SLIDER -->
+<section class="section-examples">
+  <div class="section-eyebrow">Examples</div>
+  <div class="section-title">BEFORE<br>& AFTER</div>
+  <div class="slider-wrapper">
+    <div class="slider-track" id="sliderTrack">
+      <div class="slide">
+        <div class="slide-panel">
+          <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&q=80" alt="Before">
+          <div class="slide-label">← <strong>BEFORE</strong> — Clean Skin</div>
+        </div>
+        <div class="slide-panel">
+          <img src="https://images.unsplash.com/photo-1565702379686-3b5bd5f9e33e?w=600&q=80" alt="After">
+          <div class="slide-label">→ <strong>AFTER</strong> — AI Tattoo Preview</div>
+        </div>
+      </div>
+      <div class="slide">
+        <div class="slide-panel">
+          <img src="https://images.unsplash.com/photo-1605462863863-10d9e47e15ee?w=600&q=80" alt="Before">
+          <div class="slide-label">← <strong>BEFORE</strong> — Clean Skin</div>
+        </div>
+        <div class="slide-panel">
+          <img src="https://images.unsplash.com/photo-1604881991720-f91add269bed?w=600&q=80" alt="After">
+          <div class="slide-label">→ <strong>AFTER</strong> — AI Tattoo Preview</div>
+        </div>
+      </div>
+      <div class="slide">
+        <div class="slide-panel">
+          <img src="https://images.unsplash.com/photo-1583001931096-959e9a1a6223?w=600&q=80" alt="Before">
+          <div class="slide-label">← <strong>BEFORE</strong> — Clean Skin</div>
+        </div>
+        <div class="slide-panel">
+          <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80" alt="After">
+          <div class="slide-label">→ <strong>AFTER</strong> — AI Tattoo Preview</div>
+        </div>
+      </div>
+    </div>
+    <div class="slider-controls">
+      <button class="slider-btn" onclick="slideBy(-1)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="slider-dots" id="sliderDots">
+        <div class="dot active" onclick="goToSlide(0)"></div>
+        <div class="dot" onclick="goToSlide(1)"></div>
+        <div class="dot" onclick="goToSlide(2)"></div>
+      </div>
+      <button class="slider-btn" onclick="slideBy(1)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section-pricing">
+  <div class="section-eyebrow">Pricing</div>
+  <div class="section-title">SIMPLE<br>PRICING</div>
+  <div class="pricing-cards">
+    <div class="price-card">
+      <span class="price-tag-label">Single Preview</span>
+      <div class="price-amount"><sup>€</sup>2<span style="font-size:36px">.90</span></div>
+      <div class="price-per">per generation</div>
+      <ul class="price-features">
+        <li><strong>1 AI-rendered image</strong></li>
+        <li>Full resolution download</li>
+        <li>GPT-4o skin analysis</li>
+        <li>DALL-E 3 quality</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <div class="featured-badge">Best Value</div>
+      <span class="price-tag-label">Bundle</span>
+      <div class="price-amount"><sup>€</sup>9<span style="font-size:36px">.90</span></div>
+      <div class="price-per">5 variations · €1.98 each</div>
+      <ul class="price-features">
+        <li><strong>5 unique variations</strong></li>
+        <li>Full resolution downloads</li>
+        <li>GPT-4o skin analysis</li>
+        <li>Compare styles side by side</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <a href="/" class="logo">INKD<span style="color:var(--rust)">.</span>AI</a>
+  <span>© 2025 INKD.AI — All rights reserved</span>
+  <span>Made with AI ✦ Vienna</span>
+</footer>
+
+<script>
+  // STATE
+  let selectedFile = null;
+  let currentSlide = 0;
+  const totalSlides = 3;
+
+  // UPLOAD
+  const photoInput = document.getElementById('photoInput');
+  const previewImg = document.getElementById('previewImg');
+  const uploadZone = document.getElementById('uploadZone');
+  const generateBtn = document.getElementById('generateBtn');
+  const descInput = document.getElementById('descInput');
+  const errorMsg = document.getElementById('errorMsg');
+
+  photoInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      previewImg.src = ev.target.result;
+      previewImg.classList.add('show');
+      uploadZone.style.paddingTop = '12px';
+      uploadZone.style.paddingBottom = '12px';
+    };
+    reader.readAsDataURL(file);
+    checkReady();
+  });
+
+  uploadZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+
+  uploadZone.addEventListener('dragleave', function() {
+    uploadZone.classList.remove('dragover');
+  });
+
+  uploadZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        previewImg.src = ev.target.result;
+        previewImg.classList.add('show');
+      };
+      reader.readAsDataURL(file);
+      checkReady();
+    }
+  });
+
+  descInput.addEventListener('input', checkReady);
+
+  function checkReady() {
+    generateBtn.disabled = !(selectedFile && descInput.value.trim().length > 5);
+  }
+
+  // PLAN SELECTION
+  document.querySelectorAll('.plan-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      document.querySelectorAll('.plan-card').forEach(function(c) { c.classList.remove('active'); });
+      card.classList.add('active');
+    });
+  });
+
+  // LOADING MESSAGES
+  const loadingMessages = [
+    'Analyzing your body part...',
+    'Reading skin tone and contours...',
+    'Designing your tattoo...',
+    'Rendering on your skin...',
+    'Applying final ink details...'
+  ];
+
+  let loadingInterval = null;
+  let loadingMsgIndex = 0;
+
+  function startLoadingMessages() {
+    const el = document.getElementById('loadingStep');
+    loadingMsgIndex = 0;
+    el.textContent = loadingMessages[0];
+    loadingInterval = setInterval(function() {
+      loadingMsgIndex = (loadingMsgIndex + 1) % loadingMessages.length;
+      el.textContent = loadingMessages[loadingMsgIndex];
+    }, 4000);
+  }
+
+  function stopLoadingMessages() {
+    if (loadingInterval) {
+      clearInterval(loadingInterval);
+      loadingInterval = null;
+    }
+  }
+
+  // GENERATE
+  generateBtn.addEventListener('click', async function() {
+    if (!selectedFile || !descInput.value.trim()) return;
+
+    const plan = document.querySelector('input[name="plan"]:checked').value;
+
+    errorMsg.classList.remove('show');
+    document.getElementById('loadingOverlay').classList.add('show');
+    startLoadingMessages();
+    generateBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('photo', selectedFile);
+    formData.append('description', descInput.value.trim());
+    formData.append('plan', plan);
+
+    try {
+      const response = await fetch('/generate', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Generation failed');
+      }
+
+      showResults(data.images);
+
+    } catch (err) {
+      errorMsg.textContent = err.message || 'Something went wrong. Please try again.';
+      errorMsg.classList.add('show');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('show');
+      stopLoadingMessages();
+      generateBtn.disabled = false;
+    }
+  });
+
+  function showResults(images) {
+    const grid = document.getElementById('resultsGrid');
+    grid.innerHTML = '';
+
+    images.forEach(function(url, i) {
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = '<img src="' + url + '" alt="Tattoo Preview ' + (i + 1) + '" loading="lazy">'
+        + '<div class="result-card-footer">'
+        + '<span class="result-num">PREVIEW ' + String(i + 1).padStart(2, '0') + '</span>'
+        + '<a href="' + url + '" download="tattoo-preview-' + (i + 1) + '.jpg" target="_blank" class="btn-download">'
+        + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+        + 'SAVE'
+        + '</a>'
+        + '</div>';
+      grid.appendChild(card);
+    });
+
+    const resultsSection = document.getElementById('resultsSection');
+    resultsSection.classList.add('show');
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function resetApp() {
+    document.getElementById('resultsSection').classList.remove('show');
+    selectedFile = null;
+    photoInput.value = '';
+    previewImg.classList.remove('show');
+    descInput.value = '';
+    uploadZone.style.paddingTop = '';
+    uploadZone.style.paddingBottom = '';
+    generateBtn.disabled = true;
+    errorMsg.classList.remove('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // SLIDER
+  function goToSlide(n) {
+    currentSlide = Math.max(0, Math.min(n, totalSlides - 1));
+    document.getElementById('sliderTrack').style.transform = 'translateX(-' + (currentSlide * 100) + '%)';
+    document.querySelectorAll('.dot').forEach(function(dot, i) {
+      dot.classList.toggle('active', i === currentSlide);
+    });
+  }
+
+  function slideBy(dir) {
+    goToSlide(currentSlide + dir);
+  }
+
+  // Auto slide
+  setInterval(function() { slideBy(1); }, 5000);
+</script>
+</body>
+</html>
