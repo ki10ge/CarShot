@@ -146,7 +146,7 @@ def call_gpt(image_buf: io.BytesIO, prompt: str) -> bytes:
 
 
 def index():
-    return send_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "carshot_final.html"))
+    return send_file("carshot_final.html")
 
 @app.route("/process", methods=["POST"])
 def process():
